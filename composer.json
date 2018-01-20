@@ -1,0 +1,7 @@
+{
+    "require": {
+        "dg/twitter-php": "^3.6",
+        "eden/sqlite": "^4.0",
+        "ivkos/pushbullet": "3.*"
+    }
+}
