@@ -178,9 +178,15 @@ class DeletedTweets {
 		$avgD = $this->database->query('SELECT (CAST(AVG(updated_on - date) as integer)/60)  as average  FROM tweets_arc WHERE deleted = 1')[0]['average'];
 
 		echo "\n\n=======STATUS FOR ".strtoupper($this->target)."=======\n";
-		echo "Old Tweets Skipped (over $this->days days old still in Twitter API response): $this->oldCount\n";
-		echo "Replies Skipped: $this->replyCount\n";
-		echo "New Tweets: $this->newCount\n\n";
+		if($this->oldCount){
+			echo "Old Tweets Skipped (over $this->days days old still in Twitter API response): $this->oldCount\n";
+		}
+		if($this->replyCount){
+			echo "Replies Skipped: $this->replyCount\n";
+		}
+		if($this->newCount){
+			echo "New Tweets: $this->newCount\n\n";
+		}
 
 		echo "Still watching $totalW tweets for deletion\n";
 		echo "Obsoleted Tweets (stored, but over $this->days days old): $ob\n";
