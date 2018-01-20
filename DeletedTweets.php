@@ -81,7 +81,8 @@ class DeletedTweets {
 	{
 		foreach($this->initrows as $t)
 		{
-			if($t['tweet_id'] == $id)
+			// if you exist and you arent deleted yet...
+			if($t['tweet_id'] == $id && is_null($t['deleted']))
 			{
 				return $t;
 			}
@@ -126,9 +127,6 @@ class DeletedTweets {
 			if($q !== FALSE)
 			{
 				if(intval($q['obsolete']) == 1){
-					if($this->verbose){
-		            	//echo 'Tweet '.$id.' is too old ('.date('Y-m-d H:i:s',$created).")\n";
-		        	}
 		            continue;
 			    }
 				$this->database->updateRows('tweets_arc', ['updated_on'=>time()], ['tweet_id=%s', $id]);
