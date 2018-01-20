@@ -1,7 +1,7 @@
 <?php
 
 require_once('vendor/autoload.php');
-date_default_timezone_set('America/Toronto');
+date_default_timezone_set('UTC');
 
 $dotenv = new Dotenv\Dotenv(__DIR__);
 $dotenv->load();
@@ -32,7 +32,7 @@ class DeletedTweets {
 		Eden\Core\Control::i();
 
 		$this->database = eden('sqlite', 'db.db3');
-		$this->target = getenv('target');
+		$this->target = getenv('targetscreen');
 		$this->verbose = $verbose;
 
 		$this->oldCount = 0;
@@ -97,6 +97,15 @@ class DeletedTweets {
 			$body = $s->text;
 			$created = strtotime($s->created_at);
 
+			if($this->target !== strtolower($s->user->screen_name))
+			{
+				//This happened somehow so an extra check is made here
+				if($this->verbose){
+					echo 'Skipping '.$id." since wrong target somehow \n";
+				}
+				continue;
+			}
+
 			if($created <= $this->tooOldDays){
 				if($this->verbose){
 					echo 'Skipping '.$id." since it's too old \n";
@@ -118,7 +127,7 @@ class DeletedTweets {
 			{
 				if(intval($q['obsolete']) == 1){
 					if($this->verbose){
-		            	echo 'Tweet '.$id.' is too old ('.date('Y-m-d H:i:s',$created).")\n";
+		            	//echo 'Tweet '.$id.' is too old ('.date('Y-m-d H:i:s',$created).")\n";
 		        	}
 		            continue;
 			    }

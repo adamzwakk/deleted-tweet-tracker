@@ -1,7 +1,7 @@
 <?php
 
 require_once('vendor/autoload.php');
-date_default_timezone_set('America/Toronto');
+date_default_timezone_set('UTC');
 
 Eden\Core\Control::i();
 $database = eden('sqlite', 'db.db3');  //instantiate
