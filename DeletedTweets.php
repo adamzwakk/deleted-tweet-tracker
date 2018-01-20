@@ -3,6 +3,9 @@
 require_once('vendor/autoload.php');
 date_default_timezone_set('America/Toronto');
 
+$dotenv = new Dotenv\Dotenv(__DIR__);
+$dotenv->load();
+
 class DeletedTweets {
 
 	protected $database;
@@ -17,19 +20,19 @@ class DeletedTweets {
 	protected $replyCount;
 	protected $newCount;
 
-	public function __construct($target,$options = [],$verbose = false)
+	public function __construct($options = [],$verbose = false)
 	{
-		$this->pb = new Pushbullet\Pushbullet('');
+		$this->pb = new Pushbullet\Pushbullet(getenv('pbkey'));
 
-		$this->twitter = new Twitter('', 
-			'', 
-			'', 
-			'');
+		$this->twitter = new Twitter(getenv('twCkey'), 
+			getenv('twCsec'), 
+			getenv('twAtok'), 
+			getenv('twAsec'));
 
 		Eden\Core\Control::i();
 
 		$this->database = eden('sqlite', 'db.db3');
-		$this->target = $target;
+		$this->target = getenv('target');
 		$this->verbose = $verbose;
 
 		$this->oldCount = 0;
