@@ -153,16 +153,6 @@ class DeletedTweets {
 	public function markObsolete()
 	{
 		$this->database->updateRows('tweets_arc', ['obsolete'=>1], ['date<=%s', $this->tooOldDays]);
-
-		$q = $this->getAllFromDB();
-		foreach($q as $t){
-			if(strpos($t['tweet_body'],'@') === 0)
-			{
-				echo 'Cleaning out a reply ('.$t['tweet_id'].") that we\'re not suposed to have\n";
-				$this->database->deleteRows('tweets_arc', ['tweet_id=%s', intval($t['tweet_id'])]);
-				continue;
-			}
-		}
 	}
 
 	public function checkDeleted()
@@ -185,7 +175,7 @@ class DeletedTweets {
 		$total = count($this->database->query('SELECT * FROM tweets_arc'));
 		$totalW = count($this->database->query('SELECT * FROM tweets_arc WHERE obsolete = 0 AND deleted IS NULL'));
 		$totalD = count($this->database->query('SELECT * FROM tweets_arc WHERE deleted = 1'));
-
+		$avgD = $this->database->query('SELECT (CAST(AVG(updated_on - date) as integer)/60)  as average  FROM tweets_arc WHERE deleted = 1')[0]['average'];
 
 		echo "\n\n=======STATUS FOR ".strtoupper($this->target)."=======\n";
 		echo "Old Tweets Skipped (over $this->days days old still in Twitter API response): $this->oldCount\n";
@@ -193,8 +183,9 @@ class DeletedTweets {
 		echo "New Tweets: $this->newCount\n\n";
 
 		echo "Still watching $totalW tweets for deletion\n";
-		echo "Obsoleted Tweets (stored, but over $this->days old): $ob\n";
+		echo "Obsoleted Tweets (stored, but over $this->days days old): $ob\n";
 		echo "Deleted Tweets: $totalD\n";
+		echo "Average time between create/deletion: $avgD minutes\n\n";
 		echo "Total Tweets stored: $total\n";
 		echo "================".str_repeat('=', strlen($this->target))."========\n\n";
 	}
