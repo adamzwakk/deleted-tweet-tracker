@@ -116,7 +116,7 @@ class DeletedTweets {
 	{
 		foreach($this->initrows as $t)
 		{
-			if($id == $t['tweet_id'] || $t['obsolete'] === 1){
+			if($id == $t['tweet_id'] || intval($t['obsolete'])){
 				continue;
 			}
 			//probably a previous tweet was a typo
@@ -215,7 +215,7 @@ class DeletedTweets {
 
 	public function markObsolete()
 	{
-		$this->database->updateRows('tweets_arc', ['obsolete'=>1], ['date<=%s', $this->tooOldDays]);
+		$this->database->updateRows('tweets_arc', ['obsolete'=>1], ['date<=%s AND obsolete = 0', $this->tooOldDays]);
 	}
 
 	public function checkDeleted()
