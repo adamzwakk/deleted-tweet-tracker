@@ -142,7 +142,9 @@ class DeletedTweets {
 			    }
 
 			    if($q['tweet_body'] != $body){
-			    	echo 'Updated body message for '.$id."\n";
+			    	if($this->verbose){
+			    		echo 'Updated body message for '.$id."\n";
+			    	}
 			    	$this->database->updateRows('tweets_arc', ['tweet_body'=>$body], ['tweet_id=%s', $id]);
 			    }
 
