@@ -252,7 +252,9 @@ class DeletedTweets {
 					{
 						$refId = filter_var($typo[0], FILTER_SANITIZE_NUMBER_INT);
 						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE tweet_id = '.$refId);
-						echo 'Old Tweet: '.$refq[0]['tweet_body']."\n";
+						$t2 = $refq[0];
+						echo '[Newer Tweet:'.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t2['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t2['updated_on'])."]\n";
+						echo $refq[0]['tweet_body']."\n";
 					}
 				}
 				echo "================\n\n";
