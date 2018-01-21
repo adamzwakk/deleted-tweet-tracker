@@ -112,6 +112,29 @@ class DeletedTweets {
 		return false;
 	}
 
+	public function tweetSimilar($id,$text)
+	{
+		foreach($this->initrows as $t)
+		{
+			if($id == $t['tweet_id'] || $t['obsolete'] === 1){
+				continue;
+			}
+			//probably a previous tweet was a typo
+			similar_text(strtolower($t['tweet_body']),strtolower($text),$percent);
+			if(intval($percent) > 85 && !is_null($t['deleted']))
+			{
+				if($this->verbose)
+				{
+					echo "Neat! A tweet (".$t['tweet_id'].") that was deleted cause of a typo, better make a note of that...\n";
+				}
+				$this->database->updateRows('tweets_arc', ['tweet_body'=>"[Probably deleted for typo to $id] ".$t['tweet_body'],'obsolete'=>1], ['tweet_id=%s', $t['tweet_id']]);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public function recordNewTweets()
 	{
 		foreach($this->statuses as $s){
@@ -148,6 +171,9 @@ class DeletedTweets {
 				$this->replyCount++;
 				continue;
 			}
+
+			// check if this is a typo update and update the deleted tweet accordingly
+			$this->tweetSimilar($id,$body);
 
 			$q = $this->tweetExists($id);
 			if($q !== FALSE)
@@ -209,7 +235,7 @@ class DeletedTweets {
 			foreach($q as $t)
 			{
 				echo "\n================\n";
-				echo '[Tweeted: '.date('Y-m-d H:i:s',$t['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t['updated_on'])."]\n";
+				echo '['.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t['updated_on'])."]\n";
 				echo $t['tweet_body']."\n";
 				echo "================\n\n";
 			}
