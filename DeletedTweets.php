@@ -127,7 +127,7 @@ class DeletedTweets {
 				{
 					echo "Neat! A tweet (".$t['tweet_id'].") that was deleted cause of a typo, better make a note of that...\n";
 				}
-				$this->database->updateRows('tweets_arc', ['tweet_body'=>"[Probably deleted for typo to $id] ".$t['tweet_body'],'obsolete'=>1], ['tweet_id=%s', $t['tweet_id']]);
+				$this->database->updateRows('tweets_arc', ['tweet_body'=>"{typo:$id} ".$t['tweet_body'],'obsolete'=>1], ['tweet_id=%s', $t['tweet_id']]);
 				return true;
 			}
 		}
@@ -234,9 +234,27 @@ class DeletedTweets {
 		if(count($q)){
 			foreach($q as $t)
 			{
+				$flagCheck = preg_split("/{(typo.*?)}/", $t['tweet_body']);
+
 				echo "\n================\n";
 				echo '['.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t['updated_on'])."]\n";
-				echo $t['tweet_body']."\n";
+				if(count($flagCheck) == 1)
+				{
+					echo $t['tweet_body']."\n";
+				}
+				else if(count($flagCheck) == 2)
+				{
+					// This is horrendous but oh well it prints pretty
+					preg_match("/{(typo.*?)}/", $t['tweet_body'], $typo);
+					echo $flagCheck[1]."\n----\n";
+
+					if(count($typo))
+					{
+						$refId = filter_var($typo[0], FILTER_SANITIZE_NUMBER_INT);
+						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE tweet_id = '.$refId);
+						echo 'Old Tweet: '.$refq[0]['tweet_body']."\n";
+					}
+				}
 				echo "================\n\n";
 			}
 		} else {
