@@ -4,13 +4,14 @@ require_once('vendor/autoload.php');
 date_default_timezone_set('UTC');
 
 $dotenv = new Dotenv\Dotenv(__DIR__);
-$dotenv->load();
+$dotenv->load(true);
 
 class DeletedTweets {
 
 	protected $database;
 	protected $pb;
 	protected $twitter;
+
 	protected $target;
 	protected $verbose;
 	protected $days;
@@ -19,19 +20,15 @@ class DeletedTweets {
 	protected $oldCount;
 	protected $replyCount;
 	protected $newCount;
+	protected $include_replies;
 
 	public function __construct($options = [],$verbose = false)
 	{
 		$this->pb = new Pushbullet\Pushbullet(getenv('pbkey'));
 
-		$this->twitter = new Twitter(getenv('twCkey'), 
-			getenv('twCsec'), 
-			getenv('twAtok'), 
-			getenv('twAsec'));
-
 		Eden\Core\Control::i();
 
-		$this->database = eden('sqlite', 'db.db3');
+		$this->database = eden('sqlite', getenv('dbpath'));
 		$this->target = getenv('targetscreen');
 		$this->verbose = $verbose;
 
@@ -40,25 +37,38 @@ class DeletedTweets {
 		$this->newCount = 0;
 
 		$day1 = 86400;
-		$this->days = isset($options['day_cutoff']) ? $options['day_cutoff'] : 5;
+		$this->days = getenv('day_cutoff',5);
 		$this->tooOldDays = time()-($day1*$this->days);
 
 		$this->statuses = [];
+		$this->include_replies = filter_var(getenv('include_replies'), FILTER_VALIDATE_BOOLEAN);
 		$this->initrows = $this->getAllFromDB();
 	}
 
 	public function getTweets()
 	{
+		$this->twitter = new Twitter(getenv('twCkey'), 
+			getenv('twCsec'), 
+			getenv('twAtok'), 
+			getenv('twAsec'));
+
 		if($this->verbose){
 			echo 'Getting recent tweets from '.$this->target."...\n";
 		}
 
-		$this->statuses = $this->twitter->request('statuses/user_timeline', 'GET', [
+		$options = [
 			'screen_name' => $this->target,
 			'count' => 300,
-			'include_rts'=>false,
-			'exclude_replies'=>false
-		]);
+			'include_rts'=>false
+		];
+
+		if(!$this->include_replies)
+		{
+			$options['exclude_replies'] = true;
+		}
+
+		$this->statuses = $this->twitter->request('statuses/user_timeline', 'GET', $options);
+
 
 		if(count($this->statuses))
 		{
@@ -115,7 +125,7 @@ class DeletedTweets {
 				continue;
 			}
 
-			if(is_int($s->in_reply_to_status_id) && $s->in_reply_to_user_id !== $s->user->id){
+			if(!$this->include_replies && is_int($s->in_reply_to_status_id) && $s->in_reply_to_user_id !== $s->user->id){
 				if($this->verbose){
 					echo 'Skipping '.$id.' since it\'s a tweet reply to '.explode(' ',$body)[0]."\n";
 				}
@@ -179,7 +189,7 @@ class DeletedTweets {
 		if($this->oldCount){
 			echo "Old Tweets Skipped (over $this->days days old still in Twitter API response): $this->oldCount\n";
 		}
-		if($this->replyCount){
+		if($this->include_replies && $this->replyCount){
 			echo "Replies Skipped: $this->replyCount\n";
 		}
 		if($this->newCount){
@@ -196,9 +206,9 @@ class DeletedTweets {
 
 	public function cleanup()
 	{
-		$q = $this->database->query('SELECT * FROM tweets_arc WHERE tweet_body LIKE "@%"');
+		$q = $this->database->query('SELECT * FROM tweets_arc WHERE tweet_body LIKE \'@%\'');
 		foreach($q as $t){
-			if(strpos($t['tweet_body'],'@') === 0)
+			if($this->include_replies === FALSE && strpos($t['tweet_body'],'@') === 0)
 			{
 				echo 'Cleaning out a reply ('.$t['tweet_id'].") that we\'re not suposed to have\n";
 				$this->database->deleteRows('tweets_arc', ['tweet_id=%s', intval($t['tweet_id'])]);

@@ -4,10 +4,7 @@ require_once('DeletedTweets.php');
 
 $verbose = isset(getopt("v::")['v']);
 
-$dt = new DeletedTweets([
-		'day_cutoff' => 7
-	],
-	$verbose);
+$dt = new DeletedTweets([], $verbose);
 
 $dt->getTweets();
 $dt->recordNewTweets();

@@ -2,15 +2,12 @@
 
 require_once('DeletedTweets.php');
 
-date_default_timezone_set('UTC');
+//Since we're only reading here, convert to local timezones
+date_default_timezone_set(getenv('timezone'));
 
 $verbose = isset(getopt("v::")['v']);
 
-$dt = new DeletedTweets([
-		'day_cutoff' => 7
-	],
-	$verbose);
-
+$dt = new DeletedTweets(null, [], $verbose);
 $q = $dt->getDeleted();
 
 if(count($q)){
