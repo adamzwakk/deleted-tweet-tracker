@@ -1,10 +1,14 @@
 <?php
 
 require_once('vendor/autoload.php');
+
+//Learned the hard way that Twitter uses UTC time, so record everything that way
 date_default_timezone_set('UTC');
 
 $dotenv = new Dotenv\Dotenv(__DIR__);
 $dotenv->load(true);
+
+
 
 class DeletedTweets {
 
@@ -22,7 +26,7 @@ class DeletedTweets {
 	protected $newCount;
 	protected $include_replies;
 
-	public function __construct($options = [],$verbose = false)
+	public function __construct($options = [])
 	{
 		$this->pb = new Pushbullet\Pushbullet(getenv('pbkey'));
 
@@ -30,7 +34,7 @@ class DeletedTweets {
 
 		$this->database = eden('sqlite', getenv('dbpath'));
 		$this->target = getenv('targetscreen');
-		$this->verbose = $verbose;
+		$this->verbose = isset(getopt("v::")['v']);
 
 		$this->oldCount = 0;
 		$this->replyCount = 0;
@@ -68,8 +72,14 @@ class DeletedTweets {
 			$options['exclude_replies'] = true;
 		}
 
-		$this->statuses = $this->twitter->request('statuses/user_timeline', 'GET', $options);
-
+		try
+		{
+			$this->statuses = $this->twitter->request('statuses/user_timeline', 'GET', $options);
+		} 
+		catch(TwitterException $e)
+		{
+			die('Twitter Error: '.$e->getMessage());
+		}
 
 		if(count($this->statuses))
 		{
@@ -109,18 +119,23 @@ class DeletedTweets {
 			$body = $s->full_text;
 			$created = strtotime($s->created_at);
 
+			if($this->verbose)
+			{
+				//echo "[Tweet $id] Taking a look...\n";
+			}
+
 			if($this->target !== strtolower($s->user->screen_name))
 			{
 				//This happened somehow so an extra check is made here
 				if($this->verbose){
-					echo 'Skipping '.$id." since wrong target somehow \n";
+					echo "[Tweet $id] Skipping since wrong target somehow \n";
 				}
 				continue;
 			}
 
 			if($created <= $this->tooOldDays){
 				if($this->verbose){
-					echo 'Skipping '.$id." since it's too old \n";
+					//echo "[Tweet $id] skipping since it's too old \n";
 				}
 				$this->oldCount++;
 				continue;
@@ -128,7 +143,7 @@ class DeletedTweets {
 
 			if(!$this->include_replies && is_int($s->in_reply_to_status_id) && $s->in_reply_to_user_id !== $s->user->id){
 				if($this->verbose){
-					echo 'Skipping '.$id.' since it\'s a tweet reply to '.explode(' ',$body)[0]."\n";
+					echo "[Tweet $id] since it\'s a tweet reply to ".explode(' ',$body)[0]."\n";
 				}
 				$this->replyCount++;
 				continue;
@@ -143,7 +158,7 @@ class DeletedTweets {
 
 			    if($q['tweet_body'] != $body){
 			    	if($this->verbose){
-			    		echo 'Updated body message for '.$id."\n";
+			    		echo "[Tweet $id] Updated body message for $id\n";
 			    	}
 			    	$this->database->updateRows('tweets_arc', ['tweet_body'=>$body], ['tweet_id=%s', $id]);
 			    }
@@ -160,10 +175,15 @@ class DeletedTweets {
 			]);
 
 			if($this->verbose){
-				echo "Added new tweet!\n";
+				echo "[Tweet $id] Added new tweet!\n";
 			}
 
 			$this->newCount++;
+		}
+
+		if(!$this->newCount)
+		{
+			echo "\n[ No new tweets to to add! ]";
 		}
 	}
 
@@ -174,6 +194,7 @@ class DeletedTweets {
 
 	public function checkDeleted()
 	{
+		// If tweet hasn't been seen for 3 minutes (and is within the X day limit), consider it deleted...
 		$q = $this->database->query('SELECT * FROM tweets_arc WHERE DATETIME(updated_on,\'unixepoch\') < :id AND obsolete = 0 AND deleted IS NULL',array(':id' => date('Y-m-d H:i:s',time()-180)));
 		foreach($q as $t){
 			$this->database->updateRows('tweets_arc', ['deleted'=>1,'deleted_at'=>time()], ['tweet_id=%s', intval($t['tweet_id'])]);
@@ -181,13 +202,25 @@ class DeletedTweets {
 		}
 	}
 
-	public function getDeleted()
+	public function printDeleted()
 	{
-		return $this->database->query('SELECT * FROM tweets_arc WHERE deleted = 1 ORDER BY tweet_id ASC');
+		$q = $this->database->query('SELECT * FROM tweets_arc WHERE deleted = 1 ORDER BY tweet_id ASC');
+		if(count($q)){
+			foreach($q as $t)
+			{
+				echo "\n================\n";
+				echo '[Tweeted: '.date('Y-m-d H:i:s',$t['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t['updated_on'])."]\n";
+				echo $t['tweet_body']."\n";
+				echo "================\n\n";
+			}
+		} else {
+			echo "Nothing yettttt!\n";
+		}
 	}
 
 	public function printStats()
 	{
+		//These queries are horrible but I'm lazy and are ran manually for fun
 		$ob = count($this->database->query('SELECT * FROM tweets_arc WHERE obsolete = 1'));
 		$total = count($this->database->query('SELECT * FROM tweets_arc'));
 		$totalW = count($this->database->query('SELECT * FROM tweets_arc WHERE obsolete = 0 AND deleted IS NULL'));
@@ -224,5 +257,10 @@ class DeletedTweets {
 				continue;
 			}
 		}
+	}
+
+	public function isVerbose()
+	{
+		return $this->verbose;
 	}
 }

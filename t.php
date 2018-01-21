@@ -4,7 +4,7 @@ require_once('DeletedTweets.php');
 
 $verbose = isset(getopt("v::")['v']);
 
-$dt = new DeletedTweets([], $verbose);
+$dt = new DeletedTweets();
 
 $dt->getTweets();
 $dt->recordNewTweets();
@@ -12,7 +12,7 @@ $dt->markObsolete();
 $dt->checkDeleted();
 $dt->cleanup();
 
-if($verbose){
+if($dt->isVerbose()){
 	$dt->printStats();
 }
 
