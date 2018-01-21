@@ -59,6 +59,7 @@ class DeletedTweets {
 		$options = [
 			'screen_name' => $this->target,
 			'count' => 300,
+			'tweet_mode' => 'extended',
 			'include_rts'=>false
 		];
 
@@ -105,7 +106,7 @@ class DeletedTweets {
 	{
 		foreach($this->statuses as $s){
 			$id = intval($s->id);
-			$body = $s->text;
+			$body = $s->full_text;
 			$created = strtotime($s->created_at);
 
 			if($this->target !== strtolower($s->user->screen_name))
@@ -139,6 +140,12 @@ class DeletedTweets {
 				if(intval($q['obsolete']) == 1){
 		            continue;
 			    }
+
+			    if($q['tweet_body'] != $body){
+			    	echo 'Updated body message for '.$id."\n";
+			    	$this->database->updateRows('tweets_arc', ['tweet_body'=>$body], ['tweet_id=%s', $id]);
+			    }
+
 				$this->database->updateRows('tweets_arc', ['updated_on'=>time()], ['tweet_id=%s', $id]);
 				continue;
 			}
