@@ -234,7 +234,8 @@ class DeletedTweets {
 		if(count($q)){
 			foreach($q as $t)
 			{
-				$flagCheck = preg_split("/{(typo.*?)}/", $t['tweet_body']);
+				$t['tweet_body'] = str_replace(array("\r", "\n"), ' ', $t['tweet_body']);
+				$flagCheck = preg_split("/{typo:(.*?)}/", $t['tweet_body']);
 
 				echo "\n================\n";
 				echo '['.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t['updated_on'])."]\n";
@@ -245,16 +246,26 @@ class DeletedTweets {
 				else if(count($flagCheck) == 2)
 				{
 					// This is horrendous but oh well it prints pretty
-					preg_match("/{(typo.*?)}/", $t['tweet_body'], $typo);
-					echo $flagCheck[1]."\n----\n";
+					preg_match("/{typo:(.*?)}/", $t['tweet_body'], $typo);
+					$flagCheck[1] = str_replace(array("\r", "\n"), ' ', $flagCheck[1]);
+					echo '[Typo\'d/deleted tweet] '.trim($flagCheck[1]);
 
 					if(count($typo))
 					{
-						$refId = filter_var($typo[0], FILTER_SANITIZE_NUMBER_INT);
-						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE tweet_id = '.$refId);
-						$t2 = $refq[0];
-						echo '[Newer Tweet:'.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t2['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t2['updated_on'])."]\n";
-						echo $refq[0]['tweet_body']."\n";
+						$refId = intval($typo[1]);
+						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE deleted = 0 AND tweet_id = '.$refId);
+						if($refq)
+						{
+							echo "\n^----v\n";
+							$t2 = $refq[0];
+							echo '[Newer Tweet:'.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t2['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t2['updated_on'])."]\n";
+							$refq[0]['tweet_body'] = str_replace(array("\r", "\n"), ' ', $refq[0]['tweet_body']);
+							echo $refq[0]['tweet_body']."\n";
+						}
+						else
+						{
+							echo "\n";
+						}
 					}
 				}
 				echo "================\n\n";
