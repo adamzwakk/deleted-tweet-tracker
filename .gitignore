@@ -1,3 +1,4 @@
 vendor/
 db.db3
 .env
+composer.phar
