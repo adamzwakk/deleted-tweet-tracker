@@ -8,8 +8,6 @@ date_default_timezone_set('UTC');
 $dotenv = new Dotenv\Dotenv(__DIR__);
 $dotenv->load(true);
 
-
-
 class DeletedTweets {
 
 	protected $database;
@@ -253,14 +251,14 @@ class DeletedTweets {
 					if(count($typo))
 					{
 						$refId = intval($typo[1]);
-						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE deleted = 0 AND tweet_id = '.$refId);
+						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE deleted IS NULL AND tweet_id = '.$refId);
 						if($refq)
 						{
 							echo "\n^----v\n";
 							$t2 = $refq[0];
-							echo '[Newer Tweet:'.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t2['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t2['updated_on'])."]\n";
-							$refq[0]['tweet_body'] = str_replace(array("\r", "\n"), ' ', $refq[0]['tweet_body']);
-							echo $refq[0]['tweet_body']."\n";
+							echo '[Newer Tweet:'.$t2['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t2['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t2['updated_on'])."]\n";
+							$t2['tweet_body'] = str_replace(array("\r", "\n"), ' ', $t2['tweet_body']);
+							echo $t2['tweet_body']."\n";
 						}
 						else
 						{
@@ -281,8 +279,10 @@ class DeletedTweets {
 		$ob = count($this->database->query('SELECT * FROM tweets_arc WHERE obsolete = 1'));
 		$total = count($this->database->query('SELECT * FROM tweets_arc'));
 		$totalW = count($this->database->query('SELECT * FROM tweets_arc WHERE obsolete = 0 AND deleted IS NULL'));
-		$totalD = count($this->database->query('SELECT * FROM tweets_arc WHERE deleted = 1'));
-		$avgD = $this->database->query('SELECT (CAST(AVG(updated_on - date) as integer)/60)  as average  FROM tweets_arc WHERE deleted = 1')[0]['average'];
+		$totalD = count($this->database->query('SELECT * FROM tweets_arc WHERE deleted = 1 AND tweet_body NOT LIKE "{typo:%"'));
+		$totalDT = count($this->database->query('SELECT * FROM tweets_arc WHERE deleted = 1 AND tweet_body LIKE "{typo:%"'));
+		$avgD = $this->database->query('SELECT (CAST(AVG(updated_on - date) as integer)/60)  as average  FROM tweets_arc WHERE deleted = 1 AND tweet_body NOT LIKE "{typo:%"')[0]['average'];
+		$avgDT = $this->database->query('SELECT (CAST(AVG(updated_on - date) as integer)/60)  as average  FROM tweets_arc WHERE deleted = 1 AND tweet_body LIKE "{typo:%"')[0]['average'];
 
 		echo "\n\n=======STATUS FOR ".strtoupper($this->target)."=======\n";
 		if($this->oldCount){
@@ -296,9 +296,14 @@ class DeletedTweets {
 		}
 
 		echo "Still watching $totalW tweets for deletion\n";
-		echo "Obsoleted Tweets (stored, but over $this->days days old): $ob\n";
-		echo "Deleted Tweets: $totalD\n";
-		echo "Average time between create/deletion: $avgD minutes\n\n";
+		echo "Obsoleted Tweets (stored, but over $this->days days old): $ob\n\n";
+		
+		echo "Deleted Tweets (for no reason?): $totalD\n";
+		echo "Deleted Tweets (cause of typo/grammar): $totalDT\n";
+		echo "Deleted Tweets Total: ".($totalD + $totalDT)."\n\n";
+		
+		echo "Average time between create/deletion: $avgD minutes\n";
+		echo "Average time between create/deletion cause typo: $avgDT minutes\n\n";
 		echo "Total Tweets stored: $total\n";
 		echo "================".str_repeat('=', strlen($this->target))."========\n\n";
 	}
