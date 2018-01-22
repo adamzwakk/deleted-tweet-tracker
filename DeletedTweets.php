@@ -4,6 +4,7 @@ require_once('vendor/autoload.php');
 
 //Learned the hard way that Twitter uses UTC time, so record everything that way
 date_default_timezone_set('UTC');
+error_reporting(E_WARNING);
 
 $dotenv = new Dotenv\Dotenv(__DIR__);
 $dotenv->load(true);
@@ -248,12 +249,11 @@ class DeletedTweets {
 
 					if(count($typo))
 					{
-						$refId = intval($typo[1]);
-						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE deleted IS NULL AND tweet_id = '.$refId)[0];
+						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE tweet_id = '.intval($typo[1]));
 						if($refq)
 						{
 							echo "\n^----v\n";
-							$this->renderTweet($refq,'[Newer Tweet:'.$refq['tweet_id'].'] ');
+							$this->renderTweet($refq[0],'[Newer Tweet:'.$refq[0]['tweet_id'].'] ');
 						}
 						else
 						{
