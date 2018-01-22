@@ -213,7 +213,7 @@ class DeletedTweets {
 
 	public function markObsolete()
 	{
-		$this->database->updateRows('tweets_arc', ['obsolete'=>1], ['date<=%s AND obsolete = 0', $this->tooOldDays]);
+		$this->database->updateRows('tweets_arc', ['obsolete'=>1], ['date<=%s AND obsolete = 0', ($this->tooOldDays+86400)]);
 	}
 
 	public function checkDeleted()
@@ -232,33 +232,28 @@ class DeletedTweets {
 		if(count($q)){
 			foreach($q as $t)
 			{
-				$t['tweet_body'] = str_replace(array("\r", "\n"), ' ', $t['tweet_body']);
 				$flagCheck = preg_split("/{typo:(.*?)}/", $t['tweet_body']);
 
 				echo "\n================\n";
-				echo '['.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t['updated_on'])."]\n";
 				if(count($flagCheck) == 1)
 				{
-					echo $t['tweet_body']."\n";
+					$this->renderTweet($t);
 				}
 				else if(count($flagCheck) == 2)
 				{
 					// This is horrendous but oh well it prints pretty
 					preg_match("/{typo:(.*?)}/", $t['tweet_body'], $typo);
-					$flagCheck[1] = str_replace(array("\r", "\n"), ' ', $flagCheck[1]);
-					echo '[Typo\'d/deleted tweet] '.trim($flagCheck[1]);
+					$t['tweet_body'] = str_replace(array("\r", "\n"), ' ', $flagCheck[1]);
+					$this->renderTweet($t,'[Typo\'d/deleted tweet] ');
 
 					if(count($typo))
 					{
 						$refId = intval($typo[1]);
-						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE deleted IS NULL AND tweet_id = '.$refId);
+						$refq = $this->database->query('SELECT * FROM tweets_arc WHERE deleted IS NULL AND tweet_id = '.$refId)[0];
 						if($refq)
 						{
 							echo "\n^----v\n";
-							$t2 = $refq[0];
-							echo '[Newer Tweet:'.$t2['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t2['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t2['updated_on'])."]\n";
-							$t2['tweet_body'] = str_replace(array("\r", "\n"), ' ', $t2['tweet_body']);
-							echo $t2['tweet_body']."\n";
+							$this->renderTweet($refq,'[Newer Tweet:'.$refq['tweet_id'].'] ');
 						}
 						else
 						{
@@ -266,7 +261,7 @@ class DeletedTweets {
 						}
 					}
 				}
-				echo "================\n\n";
+				echo "\n================\n\n";
 			}
 		} else {
 			echo "Nothing yettttt!\n";
@@ -324,5 +319,14 @@ class DeletedTweets {
 	public function isVerbose()
 	{
 		return $this->verbose;
+	}
+
+	private function renderTweet($t, $prefix = '')
+	{
+		//cleanup
+		$t['tweet_body'] = str_replace(array("\r", "\n"), ' ', $t['tweet_body']);
+
+		echo $prefix.'['.$t['tweet_id'].'] [Tweeted: '.date('Y-m-d H:i:s',$t['date'])."] -- [Last seen: ".date('Y-m-d H:i:s',$t['updated_on'])."]\n";	
+		echo trim($t['tweet_body']);
 	}
 }
