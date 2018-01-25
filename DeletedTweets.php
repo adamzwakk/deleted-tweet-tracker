@@ -120,7 +120,7 @@ class DeletedTweets {
 			}
 			//probably a previous tweet was a typo
 			similar_text(strtolower($t['tweet_body']),strtolower($text),$percent);
-			if(intval($percent) > 80 && !is_null($t['deleted']))
+			if(intval($percent) > 75 && !is_null($t['deleted']))
 			{
 				if($this->verbose)
 				{
