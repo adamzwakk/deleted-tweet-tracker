@@ -120,7 +120,7 @@ class DeletedTweets {
 			}
 			//probably a previous tweet was a typo
 			similar_text(strtolower($t['tweet_body']),strtolower($text),$percent);
-			if(intval($percent) > 85 && !is_null($t['deleted']))
+			if(intval($percent) > 75 && !is_null($t['deleted']))
 			{
 				if($this->verbose)
 				{
@@ -223,7 +223,7 @@ class DeletedTweets {
 		$q = $this->database->query('SELECT * FROM tweets_arc WHERE DATETIME(updated_on,\'unixepoch\') < :id AND obsolete = 0 AND deleted IS NULL',array(':id' => date('Y-m-d H:i:s',time()-180)));
 		foreach($q as $t){
 			$this->database->updateRows('tweets_arc', ['deleted'=>1,'deleted_at'=>time()], ['tweet_id=%s', intval($t['tweet_id'])]);
-			$this->pb->allDevices()->pushNote("I've found a deleted tweet for ".$this->target."!", "Here it is: ".$t['tweet_body']);
+			$this->pb->allDevices()->pushNote("I've found a deleted tweet for ".$this->target."!", "Tweeted [".date('Y-m-d H:i:s',$t['date'])."]: ".$t['tweet_body']);
 		}
 	}
 
@@ -299,6 +299,8 @@ class DeletedTweets {
 		
 		echo "Average time between create/deletion: $avgD minutes\n";
 		echo "Average time between create/deletion cause typo: $avgDT minutes\n\n";
+		echo "That's ".round((($total-($totalD + $totalDT))/$total)*100,2)."% deleted!\n\n";
+
 		echo "Total Tweets stored: $total\n";
 		echo "================".str_repeat('=', strlen($this->target))."========\n\n";
 	}
