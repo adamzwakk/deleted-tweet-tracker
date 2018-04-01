@@ -279,6 +279,9 @@ class DeletedTweets {
 		$avgD = $this->database->query('SELECT (CAST(AVG(updated_on - date) as integer)/60)  as average  FROM tweets_arc WHERE deleted = 1 AND tweet_body NOT LIKE "{typo:%"')[0]['average'];
 		$avgDT = $this->database->query('SELECT (CAST(AVG(updated_on - date) as integer)/60)  as average  FROM tweets_arc WHERE deleted = 1 AND tweet_body LIKE "{typo:%"')[0]['average'];
 
+		$mostTweets = $this->database->query("SELECT strftime('%Y-%m-%d', date, 'unixepoch') d, count(*) num FROM tweets_arc GROUP BY d ORDER BY num DESC LIMIT 1")[0];
+		$mostTweetsD = $this->database->query("SELECT strftime('%Y-%m-%d', updated_on, 'unixepoch') d, count(*) num FROM tweets_arc WHERE deleted = 1 GROUP BY d ORDER BY num DESC LIMIT 1")[0];
+
 		echo "\n\n=======STATUS FOR ".strtoupper($this->target)."=======\n";
 		if($this->oldCount){
 			echo "Old Tweets Skipped (over $this->days days old still in Twitter API response): $this->oldCount\n";
@@ -300,6 +303,9 @@ class DeletedTweets {
 		echo "Average time between create/deletion: $avgD minutes\n";
 		echo "Average time between create/deletion cause typo: $avgDT minutes\n\n";
 		echo "That's ".round((($total-($totalD + $totalDT))/$total)*100,2)."% deleted!\n\n";
+
+		echo "Most active day: ".$mostTweets['d']." (".$mostTweets['num']." Tweets)\n";
+		echo "Most deletes in a day: ".$mostTweetsD['d']." (".$mostTweetsD['num']." deletes)\n\n";
 
 		echo "Total Tweets stored: $total\n";
 		echo "================".str_repeat('=', strlen($this->target))."========\n\n";
